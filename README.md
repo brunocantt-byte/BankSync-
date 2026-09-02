@@ -1,176 +1,240 @@
+<div align="center">
+
+![BankSync — Conciliação Bancária Automatizada](./assets/banner.png)
+
 # BankSync — Conciliação Bancária Automatizada
 
-<p align="center">
-  <strong>Uma base permanente para importar extratos bancários, integrar dados do sistema, deduplicar lançamentos e gerar conciliações auditáveis.</strong>
-</p>
+**Automação financeira para importar extratos, integrar dados do sistema, conciliar lançamentos e transformar movimentações bancárias em uma base histórica auditável.**
 
-<p align="center">
-  <img alt="Status" src="https://img.shields.io/badge/status-em%20desenvolvimento-18324A">
-  <img alt="Python" src="https://img.shields.io/badge/Python-3.12%2B-2563EB">
-  <img alt="Database" src="https://img.shields.io/badge/PostgreSQL-base%20hist%C3%B3rica-0F766E">
-  <img alt="Relatorios" src="https://img.shields.io/badge/relat%C3%B3rios-XLSX%20%2B%20CSV-B45309">
-</p>
+[![Status](https://img.shields.io/badge/status-valida%C3%A7%C3%A3o%20operacional-00142F?style=for-the-badge)](#-status-do-projeto)
+[![Python](https://img.shields.io/badge/Python-3.12%2B-00AFC5?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-base%20hist%C3%B3rica-0B2A4A?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org)
+[![PDF](https://img.shields.io/badge/PDF-extra%C3%A7%C3%A3o%20banc%C3%A1ria-F5066E?style=for-the-badge)](#-leitores-banc%C3%A1rios)
+[![Excel](https://img.shields.io/badge/Excel-relat%C3%B3rios-82DC00?style=for-the-badge)](#-relat%C3%B3rios-gerados)
+[![License: MIT](https://img.shields.io/badge/License-MIT-5A23A7?style=for-the-badge)](./LICENSE)
 
----
+**Projeto funcional em validação operacional**
 
-## Visão Geral
-
-**BankSync** é um projeto de automação financeira criado para resolver um problema muito prático: parar de conciliar extratos e relatórios manualmente, arquivo por arquivo, mês por mês.
-
-O sistema centraliza dados bancários e dados do sistema operacional/financeiro em uma base PostgreSQL local, aplica regras de conciliação, identifica inconsistências e gera relatórios em Excel/CSV para validação.
-
-Ele foi pensado para cenários em que existem:
-
-- extratos bancários em **PDF**, **OFX** ou **CSV**;
-- relatórios financeiros exportados do sistema;
-- dados vindos diretamente do **Clinux/Genesis**;
-- múltiplas empresas, unidades, contas e bancos;
-- lançamentos parcelados, duplicados, com datas divergentes ou descrições diferentes;
-- necessidade de guardar histórico e consultar tudo depois sem voltar ao banco ou ao sistema.
+</div>
 
 ---
 
-## O Que O BankSync Faz
+> [!NOTE]
+> Este repositório não contém extratos reais, planilhas financeiras, credenciais, caminhos internos ou dados de produção. Os arquivos sensíveis ficam apenas no ambiente local.
 
-| Área | O que acontece |
+## Sumário
+
+- [Objetivo do projeto](#-objetivo-do-projeto)
+- [O que o BankSync faz](#-o-que-o-banksync-faz)
+- [Arquitetura](#%EF%B8%8F-arquitetura)
+- [Fluxo operacional](#-fluxo-operacional)
+- [Regras de conciliação](#-regras-de-concilia%C3%A7%C3%A3o)
+- [Leitores bancários](#-leitores-banc%C3%A1rios)
+- [Integração com sistema financeiro](#-integra%C3%A7%C3%A3o-com-sistema-financeiro)
+- [Tecnologias utilizadas](#%EF%B8%8F-tecnologias-utilizadas)
+- [Relatórios gerados](#-relat%C3%B3rios-gerados)
+- [Como executar localmente](#-como-executar-localmente)
+- [Estrutura do repositório](#-estrutura-do-reposit%C3%B3rio)
+- [Decisões técnicas e cuidados](#-decis%C3%B5es-t%C3%A9cnicas-e-cuidados)
+- [Segurança e privacidade](#-seguran%C3%A7a-e-privacidade)
+- [Roadmap](#-roadmap)
+- [Status do projeto](#-status-do-projeto)
+- [Autor](#-autor)
+- [Licença](#-licen%C3%A7a)
+
+---
+
+## 🎯 Objetivo do projeto
+
+O **BankSync** resolve uma dor comum em rotinas financeiras: conciliar manualmente extratos bancários e lançamentos do sistema, linha por linha, tentando descobrir se cada pagamento, recebimento, imposto, transferência ou baixa realmente aparece dos dois lados.
+
+Em vez de depender de conferência manual em PDFs, planilhas e relatórios separados, o BankSync cria uma base histórica local em PostgreSQL, importa movimentações de múltiplas fontes, aplica regras de deduplicação e gera relatórios de conciliação prontos para análise.
+
+| Dor operacional | Como o BankSync ajuda |
 |---|---|
-| Importação bancária | Lê extratos PDF/OFX/CSV, extrai transações e grava na base histórica |
-| Importação do sistema | Importa XLS/XLSX ou puxa dados do Clinux/Genesis quando disponível |
-| Deduplicação | Evita duplicar lançamentos quando o mesmo movimento aparece em mais de um extrato |
-| Conciliação | Cruza Banco x Sistema por valor, data, CNPJ/CPF, documento, fornecedor e texto aproximado |
-| Parcelas | Encontra casos em que várias parcelas de um lado fecham o valor do outro |
-| Tributos Caixa | Associa pagamentos à Caixa Econômica com impostos e encargos quando houver evidência |
-| Retenção | Mantém apenas o período desejado, com backup antes de excluir dados antigos |
-| Relatórios | Gera planilhas finais com painel, conciliados, pendências, duplicidades e divergências |
+| Muitos extratos em PDF | Extrai transações e transforma em dados estruturados |
+| Relatórios do sistema difíceis de cruzar | Padroniza lançamentos para comparação com o banco |
+| Lançamentos parcelados | Busca combinações em que várias parcelas fecham o valor total |
+| Datas divergentes | Concilia quando há evidência e sinaliza a diferença |
+| Descrições diferentes | Usa documento, valor, fornecedor e texto aproximado |
+| Duplicidade de arquivos | Deduplica por hash, conta, data, valor e descrição |
+| Histórico espalhado | Mantém uma base permanente consultável |
 
 ---
 
-## Arquitetura
+## ⚙️ O que o BankSync faz
+
+| Área | Função |
+|---|---|
+| Extração bancária | Lê extratos em PDF, OFX e CSV |
+| Importação do sistema | Importa XLS/XLSX ou consulta o banco do sistema quando disponível |
+| Base histórica | Armazena transações bancárias, lançamentos do sistema e arquivos processados |
+| Deduplicação | Evita reprocessar arquivos ou duplicar movimentos sobrepostos |
+| Conciliação | Cruza banco e sistema por valor, data, CNPJ/CPF, documento, fornecedor e descrição |
+| Parcelamento | Localiza grupos de parcelas que somam exatamente o valor correspondente |
+| Tributos | Associa pagamentos à Caixa Econômica com impostos e encargos quando há evidência |
+| Relatórios | Gera CSVs e planilhas Excel com painel, pendências, divergências e duplicidades |
+| Auditoria | Preserva origem, hash, período e metadados dos arquivos importados |
+
+---
+
+## 🏗️ Arquitetura
 
 ```mermaid
-flowchart LR
-    A[Pastas de extratos bancários] --> B[Leitores de PDF / OFX / CSV]
-    C[Relatórios do sistema] --> D[Importadores de Sistema]
-    E[Clinux / Genesis] --> F[Conector PostgreSQL / Túnel]
+flowchart TD
+    A[Pastas de extratos bancários] --> B[Leitores PDF / OFX / CSV]
+    C[Relatórios XLS / XLSX] --> D[Importadores do sistema]
+    E[Sistema financeiro / ERP] --> F[Conector PostgreSQL ou túnel]
 
-    B --> G[(PostgreSQL Local)]
+    B --> G[(PostgreSQL local)]
     D --> G
     F --> G
 
     G --> H[Deduplicação]
-    H --> I[Motor de Conciliação]
-    I --> J[Relatórios CSV]
-    I --> K[Planilhas Excel]
-    I --> L[Análises Financeiras]
+    H --> I[Motor de conciliação]
+    I --> J[CSVs auditáveis]
+    I --> K[Planilha Excel final]
+    I --> L[Consultas e análises financeiras]
+
+    style A fill:#00142F,stroke:#00AFC5,color:#fff
+    style B fill:#00AFC5,stroke:#00142F,color:#fff
+    style C fill:#5A23A7,stroke:#00142F,color:#fff
+    style D fill:#F5066E,stroke:#00142F,color:#fff
+    style E fill:#0B2A4A,stroke:#82DC00,color:#fff
+    style F fill:#82DC00,stroke:#00142F,color:#00142F
+    style G fill:#00142F,stroke:#82DC00,color:#fff
+    style H fill:#0B2A4A,stroke:#00AFC5,color:#fff
+    style I fill:#F5066E,stroke:#00AFC5,color:#fff
+    style J fill:#00AFC5,stroke:#00142F,color:#fff
+    style K fill:#82DC00,stroke:#00142F,color:#00142F
+    style L fill:#5A23A7,stroke:#F5066E,color:#fff
 ```
 
 ---
 
-## Fluxo Principal
+## 🔄 Fluxo operacional
 
 ```mermaid
 sequenceDiagram
     participant Banco as Banco / Extratos
-    participant Sistema as Sistema / Clinux
-    participant Base as Base PostgreSQL
-    participant Motor as Motor de Conciliação
+    participant Sistema as Sistema / ERP
+    participant Base as PostgreSQL
+    participant Motor as Conciliação
     participant Relatorio as Excel + CSV
 
     Banco->>Base: Importa transações bancárias
     Sistema->>Base: Importa lançamentos financeiros
-    Base->>Base: Deduplica e mantém histórico
+    Base->>Base: Deduplica arquivos e movimentos
     Base->>Motor: Envia dados do período analisado
-    Motor->>Motor: Aplica regras de conciliação
-    Motor->>Relatorio: Gera painel, detalhes e pendências
+    Motor->>Motor: Aplica regras de correspondência
+    Motor->>Relatorio: Gera painel, conciliados e pendências
 ```
+
+| Etapa | Resultado esperado |
+|---|---|
+| 1. Coleta | Arquivos novos são localizados nas pastas configuradas |
+| 2. Extração | PDFs e OFXs viram transações estruturadas |
+| 3. Importação | Dados entram no PostgreSQL com rastreabilidade |
+| 4. Deduplicação | Movimentos repetidos são evitados |
+| 5. Conciliação | Banco e sistema são comparados em camadas |
+| 6. Revisão | Divergências e validações humanas ficam sinalizadas |
 
 ---
 
-## Estrutura Do Projeto
+## 🧩 Regras de conciliação
 
-```text
-C:\ConciliaFinanceira
-├── entrada\
-│   ├── banco\                 # Arquivos bancários manuais
-│   └── sistema\               # Arquivos exportados do sistema
-├── processados\
-│   ├── banco\                 # Cópias arquivadas dos bancos importados
-│   └── sistema\               # Cópias arquivadas dos relatórios importados
-├── dados\
-│   ├── extracoes\             # CSVs extraídos dos PDFs e relatórios intermediários
-│   └── backups\               # Backups antes de limpezas/exclusões
-├── conciliados\               # Relatórios finais de conciliação
-├── python\                    # Importadores, leitores, conciliação e auditorias
-├── sql\                       # Schema e migrações da base histórica
-├── config_pastas.example.json # Modelo de pastas monitoradas
-├── atualizar_base.bat         # Atalho para atualização incremental
-└── .env                       # Credenciais locais, não versionar
-```
+### Conciliado
+
+Usado quando há evidência forte de que banco e sistema representam a mesma operação.
+
+Exemplos:
+
+- mesmo CNPJ, valor e data;
+- mesmo CNPJ, valor e data próxima;
+- mesmo valor, fornecedor compatível e data próxima;
+- soma exata de parcelas com documento, fornecedor ou tributo compatível.
+
+### Valor igual validar
+
+Usado quando o valor bate, mas alguma informação precisa de conferência.
+
+Exemplos:
+
+- data diferente;
+- documento ausente;
+- CNPJ divergente;
+- fornecedor diferente;
+- descrição sem relação textual forte;
+- múltiplos lançamentos iguais no mesmo mês.
+
+> [!IMPORTANT]
+> Essa classificação é intencional. O BankSync pode conciliar automaticamente pelo valor, mas deixa a linha sinalizada para validação humana.
+
+### Banco sem sistema
+
+Transação encontrada no banco sem correspondência suficiente no sistema.
+
+Pode indicar:
+
+- lançamento ainda não registrado;
+- valor lançado de forma diferente;
+- documento ausente;
+- baixa feita em outra conta;
+- transferência ainda não classificada.
+
+### Sistema sem banco
+
+Lançamento existente no sistema sem transação bancária correspondente.
+
+Pode indicar:
+
+- lançamento provisionado, mas ainda não realizado;
+- baixa em outra data;
+- baixa em outra conta;
+- lançamento duplicado no sistema;
+- relatório do sistema mais detalhado que o extrato.
+
+### Divergências
+
+Usado quando existe indício de relação, mas o valor, a data, o documento ou outra informação relevante não fecha completamente.
+
+### Duplicidades
+
+Sinaliza grupos aparentemente repetidos usando origem, mês, tipo, valor, documento e texto-base.
 
 ---
 
-## Componentes Principais
+## 🏦 Leitores bancários
 
-### Base histórica
+O BankSync possui leitores para múltiplos layouts de extratos.
 
-Arquivos:
+| Banco / Fonte | Situação |
+|---|---|
+| Cora | Layout tratado |
+| Bradesco | Layout tratado |
+| Banco do Brasil | Layout tratado |
+| Caixa Econômica Federal | Layout tratado |
+| Itaú | Layout tratado, com fallback para OCR em alguns PDFs |
+| Banco do Nordeste | Layout tratado |
+| Unicred | Layout tratado |
+| Uniprime | Layout tratado |
+| Sicoob | Layout tratado |
+| Safra | Layout tratado |
+| Stone | Layout tratado |
+| Banco da Amazônia / BASA | Layout tratado |
 
-- `python/base_historica.py`
-- `python/aplicar_migracao_historico.py`
-- `sql/schema.sql`
-- `sql/historico_permanente.sql`
+Alguns PDFs podem exigir OCR ou novos leitores quando o banco altera o layout.
 
-Responsável por:
+---
 
-- conectar ao PostgreSQL;
-- registrar arquivos importados;
-- guardar transações bancárias;
-- guardar lançamentos do sistema;
-- manter histórico de execuções de conciliação;
-- permitir auditoria por arquivo, período, origem e conta.
+## 🔗 Integração com sistema financeiro
 
-### Leitores bancários
+O BankSync trabalha com duas abordagens:
 
-Arquivos:
-
-- `python/leitores_pdf_banco.py`
-- `python/extrair_banco_pdf_csv.py`
-- `python/inventariar_pdfs_bancos_extratos.py`
-- `python/extrair_transacoes_pdfs_inventario.py`
-- `python/importar_transacoes_bancarias_deduplicadas.py`
-
-Layouts já trabalhados no projeto:
-
-- Cora
-- Bradesco
-- Banco do Brasil
-- Caixa Econômica Federal
-- Itaú
-- Banco do Nordeste
-- Unicred
-- Uniprime
-- Sicoob
-- Safra
-- Stone
-- Banco da Amazônia/BASA
-
-Alguns PDFs podem exigir OCR ou novos leitores específicos quando o banco muda o layout.
-
-### Integração com o Sistema / Clinux
-
-Arquivos:
-
-- `python/importar_clinux_sistema.py`
-- `python/testar_conexao_sistema_db.py`
-- `python/testar_tunel_proprio_clinux.py`
-- `python/clinux_tunel.py`
-- `README_INTEGRACAO_SISTEMA.md`
-- `README_TUNEL_CLINUX.md`
-
-O BankSync pode trabalhar de duas formas:
-
-- importando relatórios exportados do sistema;
-- conectando diretamente ao banco do Clinux/Genesis quando houver credencial e túnel disponíveis.
+| Modo | Uso |
+|---|---|
+| Exportação manual | Importa relatórios XLS/XLSX baixados do sistema |
+| Conexão direta | Consulta o banco do sistema quando houver credenciais e acesso autorizados |
 
 Origens gravadas na base:
 
@@ -180,142 +244,87 @@ Origens gravadas na base:
 | `CLINUX_TRANSFERENCIA` | Transferências entre contas |
 | `ERP` | Importações antigas ou manuais |
 
-Importante: transferências devem ser mantidas para conciliação bancária, mas não devem ser misturadas com faturamento bruto.
-
-### Motor de Conciliação
-
-Arquivos:
-
-- `python/conciliar_cora.py`
-- `python/conciliar_periodo.py`
-- `python/conciliar_geral_2024_2026.py`
-- `python/conciliar_ultimos_12_meses.py`
-- `python/gerar_possiveis_divergencias_valor.py`
-- `python/criar_excel_conciliacao_geral_streaming.py`
-
-O motor aplica regras em camadas:
-
-1. mesmo tipo de movimento;
-2. mesmo valor;
-3. mesmo documento/CNPJ/CPF;
-4. mesma data ou data próxima;
-5. fornecedor/prestador compatível;
-6. descrição aproximada;
-7. categorias textuais relacionadas;
-8. agrupamento por soma de parcelas;
-9. regras especiais para tributos pagos via Caixa Econômica;
-10. validação de possíveis duplicidades.
+> [!TIP]
+> Transferências são mantidas para conciliação bancária, mas não devem ser misturadas com faturamento bruto.
 
 ---
 
-## Regras De Conciliação
+## 🛠️ Tecnologias utilizadas
 
-### Conciliado
-
-Usado quando há evidência forte de que Banco e Sistema representam a mesma operação.
-
-Exemplos:
-
-- mesmo CNPJ, valor e data;
-- mesmo CNPJ, valor e data próxima;
-- mesmo valor, fornecedor compatível e data próxima;
-- soma exata de parcelas com documento ou fornecedor compatível.
-
-### Valor Igual Validar
-
-Usado quando o valor bate, mas outras informações precisam ser revisadas.
-
-Exemplos:
-
-- data diferente;
-- documento ausente;
-- CNPJ diferente;
-- fornecedor diferente;
-- descrição sem ligação textual clara;
-- mesmo valor em lançamentos muito parecidos.
-
-Essa categoria é proposital: o BankSync concilia automaticamente, mas deixa sinalizado para validação humana.
-
-### Banco Sem Sistema
-
-Transação encontrada no banco, mas sem correspondência suficiente no sistema.
-
-Pode indicar:
-
-- lançamento não registrado no sistema;
-- lançamento registrado com valor diferente;
-- documento ausente;
-- banco com descrição genérica;
-- transferência não classificada;
-- PDF importado corretamente, mas sistema incompleto.
-
-### Sistema Sem Banco
-
-Lançamento existente no sistema, mas sem transação bancária correspondente.
-
-Pode indicar:
-
-- lançamento provisionado, mas não realizado;
-- baixa em outra conta;
-- baixa em data diferente;
-- lançamento duplicado no sistema;
-- relatório do sistema mais detalhado que o extrato bancário.
-
-### Possíveis Divergências
-
-Quando há indício de relação, mas o valor não fecha.
-
-Critérios atuais:
-
-- mesmo documento ou raiz de CNPJ;
-- mesmo tipo de movimento;
-- data próxima ou mesmo mês;
-- valor diferente.
-
-### Duplicidades
-
-Sinaliza grupos aparentemente repetidos.
-
-Critérios atuais:
-
-- mesma origem;
-- mesmo mês;
-- mesmo tipo;
-- mesmo valor;
-- mesmo documento ou texto-base parecido.
+| Tecnologia | Função |
+|---|---|
+| Python | Extração, importação, conciliação e automação |
+| PostgreSQL | Base histórica local |
+| pandas | Leitura e tratamento de planilhas |
+| openpyxl | Geração da planilha final em Excel |
+| pdfplumber | Extração de texto dos PDFs bancários |
+| Tesseract OCR | Apoio a PDFs escaneados |
+| OFX parser | Importação de extratos OFX |
+| python-dotenv | Configuração local por `.env` |
+| Git / GitHub | Versionamento do projeto |
 
 ---
 
-## Comandos Mais Usados
+## 📊 Relatórios gerados
 
-### Instalar dependências
+Os relatórios operacionais são gerados localmente e não são versionados no GitHub.
+
+```text
+C:\ConciliaFinanceira\conciliados
+```
+
+Arquivos principais:
+
+| Arquivo | Conteúdo |
+|---|---|
+| `relatorio_conciliacao_ultimos_12_meses.xlsx` | Planilha final para análise |
+| `01_resumo.csv` | Indicadores gerais |
+| `02_conciliados.csv` | Matches encontrados |
+| `03_valor_igual_validar.csv` | Matches por valor igual com validação necessária |
+| `04_divergencias.csv` | Divergências formais |
+| `05_banco_sem_sistema.csv` | Transações bancárias sem correspondência |
+| `06_sistema_sem_banco.csv` | Lançamentos do sistema sem banco |
+| `07_duplicidades.csv` | Possíveis duplicidades |
+| `08_possiveis_divergencias_valor.csv` | Indícios de relação com diferença de valor |
+
+---
+
+## 💻 Como executar localmente
+
+### Pré-requisitos
+
+- Python 3.12+
+- PostgreSQL
+- Git
+- Tesseract OCR, opcional para PDFs escaneados
+- Acesso local aos extratos e relatórios do sistema
+
+### Instalação
 
 ```powershell
+git clone https://github.com/brunocantt-byte/BankSync-.git
+cd BankSync-
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-Depois, crie seu `.env` a partir do modelo:
+Crie os arquivos locais a partir dos modelos:
 
 ```powershell
 copy .env.example .env
-```
-
-E crie sua configuração local de pastas monitoradas:
-
-```powershell
 copy config_pastas.example.json config_pastas.json
 ```
 
-Edite `config_pastas.json` com o caminho real da pasta de extratos. Esse arquivo é local e não deve ir para o GitHub.
+> [!WARNING]
+> `.env` e `config_pastas.json` são arquivos locais. Eles não devem ser enviados ao GitHub.
 
-### Aplicar estrutura inicial do banco
+### Criar estrutura do banco
 
 ```powershell
 C:\ConciliaFinanceira\.venv\Scripts\python.exe C:\ConciliaFinanceira\python\aplicar_migracao_historico.py
 ```
 
-### Atualizar a base automaticamente
+### Atualizar a base
 
 ```powershell
 C:\ConciliaFinanceira\.venv\Scripts\python.exe C:\ConciliaFinanceira\python\atualizar_base.py
@@ -327,13 +336,13 @@ Ou pelo atalho:
 C:\ConciliaFinanceira\atualizar_base.bat
 ```
 
-### Atualizar apenas arquivos, sem Clinux
+### Atualizar apenas arquivos
 
 ```powershell
 C:\ConciliaFinanceira\.venv\Scripts\python.exe C:\ConciliaFinanceira\python\atualizar_base.py --sem-clinux
 ```
 
-### Atualizar apenas Clinux
+### Atualizar apenas o sistema
 
 ```powershell
 C:\ConciliaFinanceira\.venv\Scripts\python.exe C:\ConciliaFinanceira\python\atualizar_base.py --somente-clinux
@@ -345,33 +354,13 @@ C:\ConciliaFinanceira\.venv\Scripts\python.exe C:\ConciliaFinanceira\python\atua
 C:\ConciliaFinanceira\.venv\Scripts\python.exe C:\ConciliaFinanceira\python\importar_historico.py --banco C:\CAMINHO\BANCO.pdf --sistema C:\CAMINHO\SISTEMA.xls
 ```
 
-### Inventariar PDFs bancários
-
-```powershell
-C:\ConciliaFinanceira\.venv\Scripts\python.exe C:\ConciliaFinanceira\python\inventariar_pdfs_bancos_extratos.py
-```
-
-### Importar transações bancárias deduplicadas
-
-```powershell
-C:\ConciliaFinanceira\.venv\Scripts\python.exe C:\ConciliaFinanceira\python\importar_transacoes_bancarias_deduplicadas.py
-```
-
-### Manter apenas os últimos 12 meses
-
-```powershell
-C:\ConciliaFinanceira\.venv\Scripts\python.exe C:\ConciliaFinanceira\python\manter_ultimos_12_meses.py --executar
-```
-
-Esse comando gera backup antes da exclusão.
-
 ### Gerar conciliação dos últimos 12 meses
 
 ```powershell
 C:\ConciliaFinanceira\.venv\Scripts\python.exe -u C:\ConciliaFinanceira\python\conciliar_ultimos_12_meses.py
 ```
 
-### Gerar planilha Excel final
+### Gerar planilha final
 
 ```powershell
 C:\ConciliaFinanceira\.venv\Scripts\python.exe C:\ConciliaFinanceira\python\criar_excel_conciliacao_geral_streaming.py
@@ -379,154 +368,169 @@ C:\ConciliaFinanceira\.venv\Scripts\python.exe C:\ConciliaFinanceira\python\cria
 
 ---
 
-## Relatórios Gerados
-
-Os relatórios ficam em:
+## 📁 Estrutura do repositório
 
 ```text
-C:\ConciliaFinanceira\conciliados
+BankSync-/
+│
+├── assets/
+│   └── banner.png
+│
+├── python/
+│   ├── atualizar_base.py
+│   ├── base_historica.py
+│   ├── leitores_pdf_banco.py
+│   ├── importar_historico.py
+│   ├── importar_clinux_sistema.py
+│   ├── conciliar_cora.py
+│   ├── conciliar_periodo.py
+│   └── conciliar_ultimos_12_meses.py
+│
+├── sql/
+│   ├── schema.sql
+│   └── historico_permanente.sql
+│
+├── README_BASE_HISTORICA.md
+├── README_INTEGRACAO_SISTEMA.md
+├── README_TUNEL_CLINUX.md
+├── config_pastas.example.json
+├── atualizar_base.bat
+├── requirements.txt
+├── LICENSE
+└── README.md
 ```
 
-Exemplo atual:
+Pastas locais ignoradas pelo Git:
 
 ```text
-C:\ConciliaFinanceira\conciliados\ultimos_12_meses
+dados/
+entrada/
+processados/
+conciliados/
+erros/
+segredos/
+.venv/
 ```
-
-Arquivos principais:
-
-| Arquivo | Conteúdo |
-|---|---|
-| `relatorio_conciliacao_ultimos_12_meses.xlsx` | Planilha final para análise |
-| `01_resumo.csv` | Indicadores gerais |
-| `02_conciliados.csv` | Todos os matches encontrados |
-| `03_valor_igual_validar.csv` | Matches por valor igual com validação necessária |
-| `04_divergencias.csv` | Divergências formais |
-| `05_banco_sem_sistema.csv` | Transações bancárias sem correspondência |
-| `06_sistema_sem_banco.csv` | Lançamentos do sistema sem banco |
-| `07_duplicidades.csv` | Possíveis duplicidades |
-| `08_possiveis_divergencias_valor.csv` | Indícios de relação com diferença de valor |
 
 ---
 
-## Estado Validado
+## 🧠 Decisões técnicas e cuidados
 
-O projeto foi validado com uma base local real, mas os números de produção não ficam versionados no GitHub.
+> [!IMPORTANT]
+> Conciliação financeira não deve depender de uma única regra isolada.
 
-Os relatórios operacionais devem ser gerados localmente em:
-
-```text
-C:\ConciliaFinanceira\conciliados
-```
+- **Valor não basta sozinho**: valores iguais são conciliados com sinalização quando datas, documentos ou fornecedores divergem.
+- **Descrição não é fonte absoluta**: bancos costumam abreviar, cortar ou alterar históricos; por isso o motor prioriza valor, documento, CNPJ/CPF, data e fornecedor.
+- **Parcelas são consideradas**: o sistema busca grupos de lançamentos cuja soma fecha exatamente com o outro lado.
+- **Transferências são preservadas**: elas precisam aparecer na conciliação, mas não entram no cálculo de faturamento bruto.
+- **Deduplicação vem antes da análise**: arquivos repetidos ou extratos sobrepostos não devem inflar totais.
+- **Auditoria é parte do fluxo**: cada importação mantém origem, hash, período e metadados do arquivo.
+- **Dados reais ficam fora do GitHub**: o repositório versiona código e documentação, não informações financeiras.
 
 ---
 
-## Segurança E Privacidade
+## 🔐 Segurança e privacidade
 
-Este projeto manipula informações financeiras sensíveis.
+Este projeto manipula informações financeiras sensíveis. Por isso, o `.gitignore` protege arquivos e pastas locais.
 
 Nunca versionar:
 
-- `.env`
+- `.env`;
 - `config_pastas.json` com caminhos internos reais;
-- `.venv`
-- extratos bancários reais;
+- extratos bancários;
+- relatórios do sistema;
+- planilhas finais;
+- CSVs extraídos;
 - backups;
-- CSVs extraídos com dados financeiros;
-- planilhas finais com dados reais;
-- credenciais do Clinux/Genesis;
+- credenciais;
 - chaves SSH;
-- arquivos de configuração com senhas.
+- dados de produção.
 
-O `.gitignore` deve proteger, no mínimo:
+Trecho essencial do `.gitignore`:
 
 ```gitignore
 .venv/
 .env
-__pycache__/
+config_pastas.json
 dados/
 processados/
 conciliados/
 erros/
 segredos/
+entrada/
+*.pdf
+*.ofx
+*.xls
+*.xlsx
+*.csv
 ```
 
 ---
 
-## Configuração De Ambiente
+## 🚀 Roadmap
 
-Arquivo local:
-
-```text
-C:\ConciliaFinanceira\.env
-```
-
-Use `.env.example` como modelo. O arquivo `.env` real deve ficar apenas na máquina local.
-
-Variáveis comuns:
-
-```text
-DB_HOST=
-DB_PORT=
-DB_NAME=
-DB_USER=
-DB_PASSWORD=
-```
-
-Para integração direta com o Clinux/Genesis:
-
-```text
-CLINUX_DB_HOST=
-CLINUX_DB_PORT=
-CLINUX_DB_NAME=
-CLINUX_DB_USER=
-CLINUX_DB_PASSWORD=
-```
-
-Para túnel SSH:
-
-```text
-CLINUX_SSH_HOST=
-CLINUX_SSH_PORT=
-CLINUX_SSH_USER=
-CLINUX_SSH_PASSWORD=
-```
-
-Ou com chave:
-
-```text
-CLINUX_SSH_KEY_PATH=C:\ConciliaFinanceira\segredos\clinux_tunel
-```
-
----
-
-## Roadmap
-
-| Prioridade | Item |
+| Prioridade | Evolução |
 |---|---|
-| Alta | Separar claramente comandos de produção e comandos de auditoria |
-| Alta | Criar CLI única `banksync` para atualizar, conciliar e gerar relatório |
+| Alta | Separar comandos de produção e comandos de auditoria |
+| Alta | Criar uma CLI única `banksync` |
+| Alta | Criar testes automatizados para leitores bancários |
 | Média | Melhorar OCR para PDFs escaneados |
 | Média | Criar novos leitores para layouts bancários ainda não suportados |
-| Média | Gerar dashboard web local para consulta rápida |
+| Média | Criar dashboard web local para consulta rápida |
 | Média | Criar agendamento diário de atualização |
 | Baixa | Exportar métricas por unidade, banco, conta e centro de custo |
-| Baixa | Criar testes automatizados para cada layout de PDF |
+| Baixa | Empacotar instalação para uso em outras máquinas |
 
 ---
 
-## Documentação Complementar
+## ✅ Status do projeto
+
+<div align="center">
+
+**Projeto funcional em validação operacional**
+
+</div>
+
+O BankSync já possui:
+
+| Item | Status |
+|---|---|
+| Base PostgreSQL local | Pronto |
+| Importação de PDF/OFX/CSV | Pronto |
+| Importação XLS/XLSX | Pronto |
+| Integração com sistema financeiro | Em validação |
+| Deduplicação bancária | Pronto |
+| Conciliação por regras | Pronto |
+| Relatório Excel final | Pronto |
+| Dashboard web | Planejado |
+| Agendamento automático | Planejado |
+
+---
+
+## 📚 Documentação complementar
 
 | Arquivo | Assunto |
 |---|---|
 | `README_BASE_HISTORICA.md` | Base permanente, pastas, atualização e leitores |
 | `README_INTEGRACAO_SISTEMA.md` | Como pedir acesso ao banco do sistema |
-| `README_TUNEL_CLINUX.md` | Túnel próprio para Clinux/Genesis |
+| `README_TUNEL_CLINUX.md` | Túnel próprio para sistema financeiro |
 
 ---
 
-## Nome Do Projeto
+## 📜 Licença
 
-**BankSync — Conciliação Bancária Automatizada**
+Distribuído sob a licença MIT. Veja [LICENSE](./LICENSE) para mais detalhes.
 
-Um nome simples para uma missão bem objetiva: sincronizar Banco e Sistema, reduzir trabalho manual e transformar conciliação financeira em uma rotina confiável, auditável e repetível.
+---
+
+<div align="center">
+
+## 👨‍💻 Autor
+
+**Bruno Cantanhede**
+
+[![GitHub](https://img.shields.io/badge/GitHub-@brunocantt--byte-00142F?style=for-the-badge&logo=github&logoColor=white)](https://github.com/brunocantt-byte)
+
+Projeto desenvolvido como parte de uma iniciativa prática de automação financeira, dados, conciliação bancária e integração de sistemas.
+
+</div>
