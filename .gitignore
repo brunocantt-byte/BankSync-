@@ -1,0 +1,31 @@
+.venv/
+.env
+config_pastas.json
+config_pastas.json.backup*
+__pycache__/
+*.pyc
+
+# Dados financeiros e arquivos sensiveis
+dados/
+processados/
+conciliados/
+erros/
+segredos/
+entrada/
+*.pdf
+*.ofx
+*.xls
+*.xlsx
+*.csv
+
+# Arquivos locais e temporarios
+/=
+*.log
+*.tmp
+*.bak
+*.backup*
+~$*
+
+# Windows
+Thumbs.db
+Desktop.ini

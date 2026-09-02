@@ -1,0 +1,19 @@
+{
+  "pastas_banco": [
+    {
+      "caminho": "\\\\SERVIDOR\\compartilhamento\\BANCOS\\EXTRATOS",
+      "ativo": false,
+      "recursivo": true,
+      "extensoes": [
+        ".pdf"
+      ],
+      "padrao_subpastas": null,
+      "ano_minimo": 2024,
+      "nome_contem": [],
+      "nome_nao_contem": [],
+      "caminho_nao_contem": [],
+      "observacao": "Configure aqui a pasta oficial de extratos bancarios."
+    }
+  ],
+  "pastas_sistema": []
+}
